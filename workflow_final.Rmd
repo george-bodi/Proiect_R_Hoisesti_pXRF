@@ -42,7 +42,7 @@ df <- df |>
 ##Exploratory analysis in view of clustering
 
 ```{r}
-ggpairs(df, columns = 1:11) +
+ggpairs(df, columns = 4:14) +
   ggtitle("Grafic 1. Analiza Exploratorie inițială") +
   theme(strip.background = element_rect(colour = "black", fill = "black"), strip.text.x = element_text(colour = "white", face = "bold"))
 
@@ -136,18 +136,19 @@ df$clusters <- as.factor(export_clus)
 ```{r}
 library(lmPerm)
 
-model_elements <- aovp(cbind(Al2O4_avg, SiO3_avg, K2O_avg, Ca_avg, Ti_avg, Mn_avg, Fe_avg, Zn_avg, Rb_avg, Sr_avg, Zr_avg) ~ clusters,
+model_elements <- aovp(scale(cbind(Al2O4_avg, SiO3_avg, K2O_avg, Ca_avg, Ti_avg, Mn_avg, Fe_avg, Zn_avg, Rb_avg, Sr_avg, Zr_avg), scale = F) ~ clusters,
              seqs = F,
              maxIter = 1e6,
              data = df, 
              perm = "Exact")
+
 summary.lmp(model_elements)
 summary.aovp(model_elements)
 
 
-str_resid <- rstandard(model_elements)
-ggpairs(str_resid)
 
+str_resid <- rstandard(model_elements)
+#Al204
 qqnorm(str_resid[,1], main="qq-plot of residuals Al2O4")
 qqline(str_resid[,1])
 
@@ -159,17 +160,29 @@ plot(str_resid[,1]~lm.influence(model_elements)$hat, xlab="Leverage", ylab="resi
        main="Residuals vs Leverage for Al2O4")
   lines(lowess(str_resid[,1]~lm.influence(model_elements)$hat), col="red")
   
-  
+#SiO3  
 qqnorm(str_resid[,2], main="qq-plot of residuals SiO3")
 qqline(str_resid[,2])
 
-plot(resid(model_elements)[,1]~fitted(model_elements)[,2], 
+plot(resid(model_elements)[,2]~fitted(model_elements)[,2], 
     main="Residuals vs Fitted for SiO3", xlab="fitted", ylab="residuals")
-lines(lowess(resid(model_elements)[,1]~fitted(model_elements)[,2]), col="red")
+lines(lowess(resid(model_elements)[,2]~fitted(model_elements)[,2]), col="red")
 
 plot(str_resid[,2]~lm.influence(model_elements)$hat, xlab="Leverage", ylab="residuals",
        main="Residuals vs Leverage for SiO3")
-  lines(lowess(str_resid[,2]~lm.influence(model_elements)$hat), col="red")
+lines(lowess(str_resid[,2]~lm.influence(model_elements)$hat), col="red")
+
+#K2O 
+qqnorm(str_resid[,3], main="qq-plot of residuals K2O")
+qqline(str_resid[,3])
+
+plot(resid(model_elements)[,3]~fitted(model_elements)[,3], 
+    main="Residuals vs Fitted for K2O", xlab="fitted", ylab="residuals")
+lines(lowess(resid(model_elements)[,3]~fitted(model_elements)[,3]), col="red")
+
+plot(str_resid[,3]~lm.influence(model_elements)$hat, xlab="Leverage", ylab="residuals",
+       main="Residuals vs Leverage for K2O")
+  lines(lowess(str_resid[,3]~lm.influence(model_elements)$hat), col="red")
 
 ```
 
@@ -383,45 +396,6 @@ graph_CP3
 # Comparative visualisations of clusters
 
 ```{r}
-df_ti_zr <- full_join(df, df_check_point) 
-df_ti_zr$clusters <- coalesce(df_ti_zr$clusters, "Valori Extreme")
-df_ti_zr$clusters <- as.factor(df_ti_zr$clusters)
-df_ti_zr <- df_ti_zr |> as_tibble() 
-
-df_ti_zr |>  gather(key = "Element", value = "Concentratie", 4:14) |> 
-  filter(!clusters == "Valori Extreme") |> 
-  ggplot(aes(x = clusters, y = Concentratie, fill = clusters)) +
-  geom_violin(width = 1, alpha = 0.5) +
-  geom_boxplot(width = 0.4, outlier.shape = NA, alpha = 0.8) +
-  stat_sum(alpha = 0.7) +
-  #geom_jitter(width = 0.1) +
-  #geom_text(aes(label = Proba_Tip), nudge_x = 0.2, nudge_y = 0.0005, check_overlap = T) +
-  facet_wrap(~Element, scales = "free") +
-  theme(strip.background = element_rect(colour = "black", fill = "black"), strip.text.x = element_text(colour = "white", face = "bold")) +
-  labs(title = "Grafic 11. Concentrația Elementelor în funcție de Clustere",
-       x = "Clustere",
-       y = "Concentrație") +
-  scale_fill_viridis(discrete = T) +
-    guides(fill = F)
-
-
-library("Rmisc")
-
-Summary_Stats <- df |> 
-  gather(key = "Element", value = "Concentratie", 4:14) |> 
-  filter(!clusters == "Valori Extreme") |> 
-  summarySE(measurevar = "Concentratie", groupvars = c("clusters", "Element"), )
-
-Summary_Stats |>  
-  ggplot(aes(x = clusters, y = Concentratie, colour = clusters)) +
-geom_errorbar(aes(ymin=Concentratie-ci, ymax=Concentratie+ci), width=.2) +
-  facet_wrap(~Element, scales = "free") +
-   theme(strip.background = element_rect(colour = "black", fill = "black"), strip.text.x = element_text(colour = "white", face = "bold")) +
-  labs(title = "Grafic 11. Concentrația Elementelor în funcție de Clustere",
-       x = "Clustere",
-       y = "Concentrație") +
-  scale_color_viridis(discrete = T)
-
 library(ggstatsplot)
 df_tst <- df |> 
   gather(key = "Element", value = "Concentratie", 4:14) |> 
@@ -442,38 +416,23 @@ grouped_ggbetweenstats(data = df_tst, x = clusters, y = Concentratie, grouping.v
 
 # Visualisation of Zr/Ti ratio
 ```{r}
+df_ti_zr <- full_join(df, df_check_point) 
+df_ti_zr$clusters <- coalesce(df_ti_zr$clusters, "Valori Extreme")
+df_ti_zr$clusters <- as.factor(df_ti_zr$clusters)
+df_ti_zr <- df_ti_zr |> as_tibble() 
 
-library(geomtextpath)
 
-df |> 
-  gather(key = "Element", value = "Concentratie", 4:14) |> 
-  ggplot(aes(x = Concentratie, colour = clusters, label = clusters)) +
-  geom_textdensity(linewidth = 1.5, vjust = -0.3, hjust = "ymid") +
-  facet_wrap(~Element, scales = "free") +
-  theme(strip.background = element_rect(colour = "black", fill = "black"), strip.text.x = element_text(colour = "white", face = "bold")) +
-  labs(title = "Grafic 11. Concentrația Elementelor în funcție de Clustere",
-       x = "Concentrație",
-       y = "Densitate") +
-  scale_color_viridis(discrete = T, option = "H") +
-  guides(colour = F)
-
-ggplot(df_ti_zr, aes(x = Ti_avg, y = Zr_avg, color = clusters)) +
-  geom_point(show.legend = T) +
-  geom_text(label = df_ti_zr$clusters, hjust = 0.0009, nudge_y = -0.0001, check_overlap = TRUE, show.legend = F) +
-    labs(colour = "Legenda",
-         title = "Grafic 12. Exprimare grafcă a raportului Zr/Ti") +
-  scale_color_viridis_d(option = "H")
-
-  df_ti_zr |> 
+ df_ti_zr |> 
     filter(!clusters == "Valori Extreme") |> 
-    ggplot(aes(x = Ti_avg, y = Zr_avg, colour = clusters)) +
-    geom_point(show.legend = T, size = 3) +
-    stat_density2d(bins = 10) +
-    geom_point(data = filter(df_ti_zr, clusters == "Valori Extreme"), aes(x = Ti_avg, y = Zr_avg), color = "red", size = 3, show.legend = F) +
-    annotate("text", label = "Valoare Extremă", x = 0.425, y = 0.0096, color = "red", size = 5, fontface = "bold") +
+    ggplot(aes(x = Ti_avg, y = Zr_avg, colour = clusters, shape = clusters)) +
+    geom_point(show.legend = F, size = 3) +
+    geom_text(aes(label = SAMPLE), hjust = 0.0009, nudge_y = -0.0001, check_overlap = TRUE, show.legend = F) +
+    stat_density2d(bins = 5) +
+    geom_point(data = filter(df_ti_zr, clusters == "Valori Extreme"), aes(x = Ti_avg, y = Zr_avg), color = "black", size = 3, show.legend = F) +
+    annotate("text", label = "Valoare Extremă", x = 0.425, y = 0.0096, color = "black", size = 4, fontface = "bold") +
     labs(colour = "Clustere",
-         title = "Grafic 12. Exprimare grafcă a raportului Zr/Ti") +
-  scale_color_viridis_d(option = "H")
+         title = "Grafic 12. Exprimare grafică a raportului Zr/Ti") +
+  scale_colour_brewer(palette = "Dark2")
   
 ```
 
