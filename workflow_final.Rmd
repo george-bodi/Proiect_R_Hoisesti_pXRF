@@ -4,7 +4,7 @@ output: word_document
 date: "`r Sys.Date()`"
 ---
 
-#Exploratory analysis
+#Exploratory analysis ---
 
 ```{r}
 library(readxl)
