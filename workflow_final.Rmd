@@ -39,7 +39,7 @@ df <- df |>
 
 ```
 
-##Exploratory analysis in view of clustering
+##Exploratory analysis in view of clustering ---
 
 ```{r}
 ggpairs(df, columns = 4:14) +
